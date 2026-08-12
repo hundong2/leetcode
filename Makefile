@@ -16,7 +16,7 @@ endif
 help:
 	@echo "사용법:"
 	@echo "  make env                         누락된 실행 환경을 한 번만 구성합니다."
-	@echo "  make run <파일경로>             확장자를 판별해 빌드하고 실행합니다."
+	@echo "  make run <파일경로>             빌드·실행 명령과 결과를 표시합니다."
 	@echo "  make run *.cpp                  일치하는 여러 파일을 차례로 실행합니다."
 	@echo "  make clean                       생성된 build 디렉터리를 삭제합니다."
 	@echo

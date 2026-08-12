@@ -39,7 +39,46 @@ output_base="${repo_root}/build/${relative_without_extension}"
 
 mkdir -p "$(dirname "$output_base")"
 
-echo "[run] ${relative_path}"
+# 실행할 명령을 셸에서 다시 입력할 수 있는 형태로 표시한다.
+print_command() {
+    local label="$1"
+    shift
+
+    printf '[%s]' "$label"
+    printf ' %q' "$@"
+    printf '\n'
+}
+
+# 컴파일 명령과 성공·실패 여부를 함께 표시한다.
+run_build() {
+    print_command "빌드 명령" "$@"
+
+    if "$@"; then
+        echo "[빌드 결과] 성공"
+    else
+        local exit_code=$?
+        echo "[빌드 결과] 실패 (종료 코드: ${exit_code})" >&2
+        return "$exit_code"
+    fi
+}
+
+# 프로그램의 표준 출력과 종료 코드를 구분해서 표시한다.
+run_program() {
+    print_command "실행 명령" "$@"
+    echo "[실행 출력]"
+
+    if "$@"; then
+        echo
+        echo "[실행 결과] 성공 (종료 코드: 0)"
+    else
+        local exit_code=$?
+        echo
+        echo "[실행 결과] 실패 (종료 코드: ${exit_code})" >&2
+        return "$exit_code"
+    fi
+}
+
+echo "[실행 대상] ${relative_path}"
 
 case "$extension" in
     cpp|cc|cxx)
@@ -51,8 +90,8 @@ case "$extension" in
             echo "오류: C++ 컴파일러가 없습니다. 먼저 'make env'를 실행하세요." >&2
             exit 1
         fi
-        "$cxx_command" -std=c++20 -O2 -Wall -Wextra -Wpedantic "$source_path" -o "$output_base"
-        "$output_base"
+        run_build "$cxx_command" -std=c++20 -O2 -Wall -Wextra -Wpedantic "$source_path" -o "$output_base"
+        run_program "$output_base"
         ;;
     csx)
         dotnet_script="${repo_root}/.tools/dotnet-script/dotnet-script"
@@ -60,7 +99,8 @@ case "$extension" in
             echo "오류: dotnet-script가 없습니다. 먼저 'make env'를 실행하세요." >&2
             exit 1
         fi
-        "$dotnet_script" "$source_path"
+        echo "[빌드 결과] 생략 (C# 스크립트)"
+        run_program "$dotnet_script" "$source_path"
         ;;
     cs)
         sdk_version="$(dotnet --version)"
@@ -72,8 +112,8 @@ case "$extension" in
             -e "s|__TARGET_FRAMEWORK__|net${sdk_major}.0|g" \
             -e "s|__SOURCE_FILE__|${source_path}|g" \
             "${repo_root}/scripts/templates/Runner.csproj.template" > "$project_file"
-        dotnet build "$project_file" --configuration Release --output "${project_dir}/out" --nologo
-        dotnet "${project_dir}/out/Runner.dll"
+        run_build dotnet build "$project_file" --configuration Release --output "${project_dir}/out" --nologo
+        run_program dotnet "${project_dir}/out/Runner.dll"
         ;;
     py)
         python_command="${repo_root}/.venv/bin/python"
@@ -81,11 +121,12 @@ case "$extension" in
             echo "오류: uv Python 가상 환경이 없습니다. 먼저 'make env'를 실행하세요." >&2
             exit 1
         fi
-        "$python_command" "$source_path"
+        echo "[빌드 결과] 생략 (Python 인터프리터 사용)"
+        run_program "$python_command" "$source_path"
         ;;
     rs)
-        rustc --edition=2021 -C opt-level=2 "$source_path" -o "$output_base"
-        "$output_base"
+        run_build rustc --edition=2021 -C opt-level=2 "$source_path" -o "$output_base"
+        run_program "$output_base"
         ;;
     kt)
         jar_path="${output_base}.jar"
@@ -100,11 +141,12 @@ case "$extension" in
             echo "오류: Java 런타임이 없습니다. 먼저 'make env'를 실행하세요." >&2
             exit 1
         fi
-        kotlinc "$source_path" -include-runtime -d "$jar_path"
-        "$java_command" -jar "$jar_path"
+        run_build kotlinc "$source_path" -include-runtime -d "$jar_path"
+        run_program "$java_command" -jar "$jar_path"
         ;;
     kts)
-        kotlinc -script "$source_path"
+        echo "[빌드 결과] 생략 (Kotlin 스크립트)"
+        run_program kotlinc -script "$source_path"
         ;;
     *)
         echo "오류: 지원하지 않는 확장자입니다: .$extension" >&2

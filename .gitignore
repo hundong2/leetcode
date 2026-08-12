@@ -1,0 +1,10 @@
+# `make env`가 생성하는 로컬 실행 도구와 Python 가상 환경입니다.
+.tools/
+.venv/
+
+# `make run`이 생성하는 실행 파일, JAR 및 .NET 빌드 결과입니다.
+build/
+
+# Python 실행 과정에서 생기는 바이트코드 캐시입니다.
+__pycache__/
+*.pyc
